@@ -1,0 +1,28 @@
+# HwMonitor .gitignore
+#
+# The data/ directory holds runtime state that is specific to one machine and
+# frequently sensitive. None of it belongs in version control.
+
+# Runtime state and configuration.
+# config.json contains the access password and the tunnel endpoints, so it must
+# never be committed; config.example.json is committed instead.
+data/
+
+# Logs
+*.log
+
+# Archived code kept only for reference (the native WinForms window).
+archive/
+
+# Dependencies (the project has none, but this guards against accidental installs)
+node_modules/
+
+# OS / editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+*~
+
+# Screenshots produced by the window capture tooling
+*.png
