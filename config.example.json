@@ -1,0 +1,40 @@
+{
+  "_comment": "Copy this file to data/config.json and adjust. data/ is gitignored because config.json holds your password.",
+
+  "port": 8080,
+  "host": "0.0.0.0",
+  "_host_comment": "0.0.0.0 = reachable from other devices on the LAN. Use 127.0.0.1 to allow this machine only.",
+
+  "password": "",
+  "_password_comment": "Empty = no login required. Set a password before exposing this server to any network: the web terminals (PowerShell and SSH) are only enabled when a password is set.",
+
+  "refreshMs": 2000,
+  "_refreshMs_comment": "Sampling interval in ms. Raise it (3000-5000) on a slow machine; the dashboard shows the monitor's own cost per sample.",
+
+  "historyMinutes": 15,
+  "_historyMinutes_comment": "How much history to keep in memory for the charts. Nothing is written to disk.",
+
+  "safety": {
+    "neverStop": ["dsh"],
+    "_comment": "Services this tooling must never stop. Remove \"dsh\" to allow the UI to restart it. Note that a process hosting the current session is additionally protected by an ancestry check."
+  },
+
+  "tunnels": [],
+  "_tunnels_comment": "Optional. frp tunnel endpoints, shown in the UI for reference. Example: [{ \"name\": \"HwMonitor\", \"local\": \"127.0.0.1:8080\", \"remote\": \"example.com:18080\" }]. Left empty here so a deployment's public addresses are not published.",
+
+  "thresholds": {
+    "batteryLowPct": 20,
+    "diskLowFreePct": 10,
+    "cpuHighPct": 90,
+    "memoryHighPct": 90
+  },
+
+  "pricing": {
+    "currency": "CNY",
+    "_comment": "Per-million-token rates. All default to 0 on purpose: HwMonitor does not guess vendor prices, so costs show as 0 and are labelled 'unpriced' until you fill these in.",
+    "models": {
+      "workbuddy/deepseek-v4.1-flash": { "input": 0, "output": 0, "cacheRead": 0, "reasoning": 0 }
+    },
+    "defaultRates": { "input": 0, "output": 0, "cacheRead": 0, "reasoning": 0 }
+  }
+}
