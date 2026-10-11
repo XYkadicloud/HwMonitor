@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>HwMonitor · 硬件监控</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- Login gate, shown only when the server reports a password is configured. -->
+<div id="login" class="login hidden">
+  <form class="login-card" id="login-form">
+    <h1>HwMonitor</h1>
+    <p class="muted">此服务器已启用访问口令</p>
+    <input type="password" id="login-password" placeholder="请输入访问口令" autocomplete="current-password" required>
+    <button type="submit">进入</button>
+    <p class="login-error" id="login-error"></p>
+  </form>
+</div>
+
+<!-- Main application -->
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" id="conn-dot"></span>
+      <strong>HwMonitor</strong>
+      <span class="muted" id="host-name">—</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="live" role="tab">实时</button>
+      <button class="tab" data-view="dsh" role="tab">DSH 使用</button>
+      <button class="tab" data-view="services" role="tab">服务</button>
+      <button class="tab" data-view="terminal" role="tab">终端</button>
+      <button class="tab" data-view="hardware" role="tab">硬件</button>
+      <button class="tab" data-view="settings" role="tab">设置</button>
+    </nav>
+    <div class="topbar-right">
+      <span class="muted" id="clock">—</span>
+      <button class="icon-btn" id="theme-toggle" title="切换主题">◐</button>
+      <button class="icon-btn" id="logout-btn" title="退出登录">⏻</button>
+    </div>
+  </header>
+
+  <!-- ============================== LIVE VIEW ============================== -->
+  <main class="view" id="view-live">
+    <section class="alerts" id="alerts"></section>
+    <section class="hero-grid">
+      <!-- Battery -->
+      <article class="card hero" id="card-battery">
+        <div class="card-head">
+          <h2>电池</h2>
+          <span class="badge" id="battery-state">—</span>
+        </div>
+        <div class="gauge-wrap">
+          <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+            <circle class="gauge-fill" id="battery-arc" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-value" id="battery-pct">—</span>
+            <span class="gauge-unit">%</span>
+          </div>
+        </div>
+        <dl class="stats">
+          <div><dt>剩余容量</dt><dd id="battery-remaining">—</dd></div>
+          <div><dt>满充容量</dt><dd id="battery-full">—</dd></div>
+          <div><dt>设计容量</dt><dd id="battery-design">—</dd></div>
+          <div><dt>健康度</dt><dd id="battery-health">—</dd></div>
+          <div><dt>循环次数</dt><dd id="battery-cycles">—</dd></div>
+          <div><dt>电压</dt><dd id="battery-voltage">—</dd></div>
+          <div><dt>实时功耗</dt><dd id="battery-power" class="accent">—</dd></div>
+          <div><dt>预计续航</dt><dd id="battery-runtime">—</dd></div>
+        </dl>
+      </article>
+
+      <!-- CPU -->
+      <article class="card hero">
+        <div class="card-head">
+          <h2>CPU</h2>
+          <span class="badge" id="cpu-name">—</span>
+        </div>
+        <div class="gauge-wrap">
+          <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+            <circle class="gauge-fill" id="cpu-arc" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-value" id="cpu-pct">—</span>
+            <span class="gauge-unit">%</span>
+          </div>
+        </div>
+        <dl class="stats">
+          <div><dt>用户态</dt><dd id="cpu-user">—</dd></div>
+          <div><dt>内核态</dt><dd id="cpu-priv">—</dd></div>
+          <div><dt>当前频率</dt><dd id="cpu-mhz">—</dd></div>
+          <div><dt>核心/线程</dt><dd id="cpu-cores">—</dd></div>
+        </dl>
+        <div class="core-bars" id="core-bars"></div>
+      </article>
+
+      <!-- Memory -->
+      <article class="card hero">
+        <div class="card-head">
+          <h2>内存</h2>
+          <span class="badge" id="mem-total">—</span>
+        </div>
+        <div class="gauge-wrap">
+          <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+            <circle class="gauge-fill" id="mem-arc" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-value" id="mem-pct">—</span>
+            <span class="gauge-unit">%</span>
+          </div>
+        </div>
+        <dl class="stats">
+          <div><dt>已用</dt><dd id="mem-used">—</dd></div>
+          <div><dt>可用</dt><dd id="mem-avail">—</dd></div>
+          <div><dt>已提交</dt><dd id="mem-commit">—</dd></div>
+          <div><dt>缓存</dt><dd id="mem-cache">—</dd></div>
+        </dl>
+      </article>
+
+      <!-- GPU -->
+      <article class="card hero">
+        <div class="card-head">
+          <h2>GPU</h2>
+          <span class="badge" id="gpu-name">—</span>
+        </div>
+        <div class="gauge-wrap">
+          <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="gauge-track" cx="60" cy="60" r="52"></circle>
+            <circle class="gauge-fill" id="gpu-arc" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-value" id="gpu-pct">—</span>
+            <span class="gauge-unit">%</span>
+          </div>
+        </div>
+        <dl class="stats">
+          <div><dt>引擎数</dt><dd id="gpu-engines">—</dd></div>
+          <div><dt>采样</dt><dd id="gpu-sampled">—</dd></div>
+        </dl>
+        <p class="note" id="gpu-note"></p>
+      </article>
+    </section>
+
+    <!-- Power / throughput row -->
+    <section class="grid-3">
+      <article class="card">
+        <div class="card-head"><h2>整机功耗</h2><span class="badge" id="power-source">电池读数</span></div>
+        <div class="big-number"><span id="power-now">—</span><span class="unit">W</span></div>
+        <div class="sparkline"><canvas id="chart-power" height="60"></canvas></div>
+        <p class="note" id="power-note">来自电池放电速率的真实读数</p>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>磁盘吞吐</h2><span class="badge" id="disk-busy">—</span></div>
+        <div class="dual">
+          <div><span class="muted">读</span> <strong id="disk-read">—</strong></div>
+          <div><span class="muted">写</span> <strong id="disk-write">—</strong></div>
+        </div>
+        <div class="sparkline"><canvas id="chart-disk" height="60"></canvas></div>
+        <p class="note" id="disk-queue">—</p>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>网络吞吐</h2><span class="badge" id="net-adapter">—</span></div>
+        <div class="dual">
+          <div><span class="muted">↓ 接收</span> <strong id="net-rx">—</strong></div>
+          <div><span class="muted">↑ 发送</span> <strong id="net-tx">—</strong></div>
+        </div>
+        <div class="sparkline"><canvas id="chart-net" height="60"></canvas></div>
+        <p class="note" id="net-note">—</p>
+      </article>
+    </section>
+
+    <!-- Volumes -->
+    <section class="card">
+      <div class="card-head"><h2>磁盘容量</h2><span class="badge" id="vol-count">—</span></div>
+      <div class="volumes" id="volumes"></div>
+    </section>
+
+    <!-- Processes + system -->
+    <section class="grid-2">
+      <article class="card">
+        <div class="card-head"><h2>占用最高的进程</h2><span class="badge">CPU</span></div>
+        <table class="table" id="proc-table">
+          <thead><tr><th>进程</th><th>PID</th><th class="num">CPU</th><th class="num">内存</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>系统</h2><span class="badge" id="uptime">—</span></div>
+        <dl class="stats stats-wide">
+          <div><dt>运行时间</dt><dd id="sys-uptime">—</dd></div>
+          <div><dt>进程 / 线程</dt><dd id="sys-procs">—</dd></div>
+          <div><dt>处理器队列</dt><dd id="sys-queue">—</dd></div>
+          <div><dt>上下文切换</dt><dd id="sys-ctx">—</dd></div>
+          <div><dt>温度</dt><dd id="sys-temp">—</dd></div>
+          <div><dt>监控自身开销</dt><dd id="sys-self">—</dd></div>
+        </dl>
+        <p class="note" id="temp-note"></p>
+      </article>
+    </section>
+
+    <!-- Charts -->
+    <section class="card">
+      <div class="card-head">
+        <h2>历史曲线</h2>
+        <span class="badge" id="hist-window">—</span>
+      </div>
+      <div class="chart-legend">
+        <span><i style="background:#4ade80"></i>CPU</span>
+        <span><i style="background:#60a5fa"></i>内存</span>
+        <span><i style="background:#f472b6"></i>GPU</span>
+        <span><i style="background:#fbbf24"></i>功耗(W)</span>
+      </div>
+      <canvas id="chart-history" height="140"></canvas>
+      <p class="note" id="hist-note"></p>
+    </section>
+  </main>
+
+  <!-- ============================== DSH VIEW ============================== -->
+  <main class="view hidden" id="view-dsh">
+    <section class="hero-grid">
+      <article class="card hero">
+        <div class="card-head"><h2>累计 Token</h2><span class="badge" id="dsh-scan">—</span></div>
+        <div class="big-number"><span id="dsh-total-tokens">—</span></div>
+        <dl class="stats">
+          <div><dt>输入</dt><dd id="dsh-in">—</dd></div>
+          <div><dt>输出</dt><dd id="dsh-out">—</dd></div>
+          <div><dt>推理</dt><dd id="dsh-reasoning">—</dd></div>
+          <div><dt>缓存读取</dt><dd id="dsh-cache">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="card hero">
+        <div class="card-head"><h2>估算费用</h2><span class="badge" id="dsh-currency">—</span></div>
+        <div class="big-number"><span id="dsh-cost">—</span></div>
+        <dl class="stats">
+          <div><dt>模型调用</dt><dd id="dsh-calls">—</dd></div>
+          <div><dt>会话数</dt><dd id="dsh-sessions">—</dd></div>
+          <div><dt>活跃会话</dt><dd id="dsh-active">—</dd></div>
+          <div><dt>扫描耗时</dt><dd id="dsh-scanms">—</dd></div>
+        </dl>
+        <p class="note" id="dsh-pricing-note"></p>
+      </article>
+
+      <article class="card hero">
+        <div class="card-head"><h2>当前会话</h2><span class="badge" id="dsh-cur-state">—</span></div>
+        <div class="cur-title" id="dsh-cur-title">—</div>
+        <div class="cur-cwd muted" id="dsh-cur-cwd">—</div>
+        <dl class="stats">
+          <div><dt>轮次</dt><dd id="dsh-cur-turns">—</dd></div>
+          <div><dt>步数</dt><dd id="dsh-cur-steps">—</dd></div>
+          <div><dt>本次 Token</dt><dd id="dsh-cur-tokens">—</dd></div>
+          <div><dt>耗时</dt><dd id="dsh-cur-span">—</dd></div>
+        </dl>
+        <div class="todo-list" id="dsh-cur-todos"></div>
+      </article>
+
+      <article class="card hero">
+        <div class="card-head"><h2>DSH 进程</h2><span class="badge" id="dsh-proc-count">—</span></div>
+        <table class="table compact" id="dsh-proc-table">
+          <thead><tr><th>角色</th><th>PID</th><th class="num">CPU</th><th class="num">内存</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="note">DSH 主进程、子代理与沙箱的实时资源占用</p>
+      </article>
+    </section>
+
+    <section class="grid-2">
+      <article class="card">
+        <div class="card-head"><h2>按模型统计</h2></div>
+        <table class="table" id="dsh-model-table">
+          <thead><tr><th>模型</th><th class="num">调用</th><th class="num">输入</th><th class="num">输出</th><th class="num">费用</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>工具调用</h2><span class="badge" id="dsh-tool-total">—</span></div>
+        <div class="tool-bars" id="dsh-tool-bars"></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>会话列表</h2>
+        <button class="btn" id="dsh-rescan">重新扫描</button>
+      </div>
+      <div class="table-scroll">
+        <table class="table" id="dsh-session-table">
+          <thead>
+            <tr>
+              <th>标题</th><th>工作区</th><th class="num">轮次</th><th class="num">步数</th>
+              <th class="num">输入</th><th class="num">输出</th><th class="num">费用</th><th>最后活动</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>每日用量</h2></div>
+      <div class="day-bars" id="dsh-day-bars"></div>
+    </section>
+  </main>
+
+  <!-- =========================== SERVICES VIEW =========================== -->
+  <main class="view hidden" id="view-services">
+    <section class="card">
+      <div class="card-head">
+        <h2>访问地址</h2>
+        <button class="btn" id="addr-refresh">刷新</button>
+      </div>
+      <p class="note">
+        用手机或平板连同一个 Wi-Fi，打开下面的地址即可查看本页。
+      </p>
+      <div class="addr-list" id="addr-list"></div>
+      <p class="note" id="addr-note"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>服务控制</h2>
+        <button class="btn" id="svc-refresh">刷新</button>
+      </div>
+      <div class="svc-list" id="svc-list"></div>
+      <p class="note" id="svc-note"></p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>一键操作</h2></div>
+      <div class="svc-actions">
+        <button class="btn primary" data-svc-action="start">全部启动</button>
+        <button class="btn" data-svc-action="restart">全部重启</button>
+        <button class="btn danger" data-svc-action="stop">全部停止</button>
+      </div>
+      <p class="note">
+        「全部停止 / 全部重启」不会停止受保护的服务。DSH 默认受保护：
+        本机常被远程操作，若 DSH 被关闭需要有人在电脑前才能重新打开，因此只允许你手动关闭。
+      </p>
+      <div class="form-status" id="svc-status"></div>
+    </section>
+
+    <section class="card hidden" id="tunnel-card">
+      <div class="card-head"><h2>内网穿透映射</h2></div>
+      <div class="table-scroll">
+        <table class="table" id="tunnel-table">
+          <thead><tr><th>服务</th><th>本机</th><th>公网</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note warn-note">
+        公网地址对所有人开放。当前若未设置访问口令，任何人都能查看你的硬件与 DSH 数据，
+        也能（在终端启用后）执行命令。请务必在「设置」中设置口令。
+      </p>
+    </section>
+  </main>
+
+  <!-- =========================== TERMINAL VIEW =========================== -->
+  <main class="view hidden" id="view-terminal">
+    <section class="card">
+      <div class="card-head">
+        <h2>PowerShell 终端</h2>
+        <span class="badge" id="term-state">未连接</span>
+      </div>
+
+      <!-- Shown instead of the terminal when the feature is unavailable. -->
+      <div id="term-disabled" class="term-disabled hidden">
+        <p id="term-disabled-msg">终端已禁用。</p>
+        <p class="note">
+          网页终端等同于远程命令执行。为避免在公网暴露一个 shell，
+          只有设置了访问口令后才能使用。请到「设置 → 访问口令」设置后刷新页面。
+        </p>
+      </div>
+
+      <div id="term-ui" class="hidden">
+        <div class="term-toolbar">
+          <button class="btn primary" id="term-open">启动终端</button>
+          <button class="btn" id="term-clear">清屏</button>
+          <button class="btn" id="term-interrupt">中断 (Ctrl+C)</button>
+          <button class="btn danger" id="term-close">关闭会话</button>
+          <span class="muted" id="term-cwd"></span>
+        </div>
+        <div class="term-output" id="term-output" tabindex="0"></div>
+        <form class="term-input-row" id="term-form">
+          <span class="term-prompt">PS&gt;</span>
+          <input type="text" id="term-input" placeholder="输入命令后回车，例如 Get-Process | Select-Object -First 5"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" disabled>
+          <button class="btn primary" type="submit" id="term-send" disabled>运行</button>
+        </form>
+        <div class="term-history-nav">
+          <span class="muted">↑ / ↓ 浏览历史命令</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------- SSH -->
+    <section class="card">
+      <div class="card-head">
+        <h2>远程 SSH</h2>
+        <span class="badge" id="ssh-state">未连接</span>
+      </div>
+
+      <div id="ssh-disabled" class="term-disabled hidden">
+        <p>SSH 终端已禁用。</p>
+        <p class="note">
+          网页 SSH 等同于远程命令执行。为避免在公网暴露 shell，只有设置了访问口令后才能使用。
+        </p>
+      </div>
+
+      <div id="ssh-ui" class="hidden">
+        <!-- Connection form -->
+        <div id="ssh-connect-panel">
+          <div class="ssh-grid">
+            <label><span>主机</span><input type="text" id="ssh-host" placeholder="192.168.1.10 或 example.com" autocomplete="off"></label>
+            <label><span>端口</span><input type="number" id="ssh-port" value="22" min="1" max="65535"></label>
+            <label><span>用户名</span><input type="text" id="ssh-user" placeholder="root" autocomplete="off"></label>
+            <label><span>私钥（可选，推荐）</span>
+              <select id="ssh-key"><option value="">不使用私钥</option></select>
+            </label>
+            <label><span>密码（可选）</span><input type="password" id="ssh-password" placeholder="留空则使用私钥或 agent" autocomplete="new-password"></label>
+            <label class="ssh-inline"><input type="checkbox" id="ssh-save"> 保存为主机</label>
+          </div>
+          <div class="ssh-actions">
+            <button class="btn primary" id="ssh-open">连接</button>
+            <button class="btn" id="ssh-clear-host">清空</button>
+          </div>
+          <div class="form-status" id="ssh-status"></div>
+          <p class="note">
+            私钥认证最安全，推荐使用。密码仅用于本次连接，不会保存到磁盘。
+            本机 OpenSSH 每条命令运行在独立 shell 中，因此 <strong>shell 变量与工作目录不会在命令之间保留</strong>；
+            需要持续状态时，可在一条命令里启动交互式程序（如 <code>bash</code> 或 <code>python</code>）。
+          </p>
+        </div>
+
+        <!-- Saved hosts -->
+        <div id="ssh-saved-wrap" class="hidden">
+          <h3 class="ssh-subhead">已保存的主机</h3>
+          <div class="ssh-saved" id="ssh-saved"></div>
+        </div>
+
+        <!-- Live session -->
+        <div id="ssh-session" class="hidden">
+          <div class="term-toolbar">
+            <button class="btn" id="ssh-clear">清屏</button>
+            <button class="btn danger" id="ssh-close">断开</button>
+            <button class="btn" id="ssh-disconnect-form">更换主机</button>
+            <span class="muted" id="ssh-target"></span>
+          </div>
+          <div class="term-output" id="ssh-output" tabindex="0"></div>
+          <form class="term-input-row" id="ssh-form">
+            <span class="term-prompt" id="ssh-prompt">$</span>
+            <input type="text" id="ssh-input" placeholder="输入命令后回车"
+                   autocomplete="off" autocapitalize="off" spellcheck="false" disabled>
+            <button class="btn primary" type="submit" id="ssh-send" disabled>运行</button>
+          </form>
+          <div class="term-history-nav">
+            <span class="muted">↑ / ↓ 浏览历史命令</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================== HARDWARE VIEW =========================== -->
+  <main class="view hidden" id="view-hardware">
+    <section class="grid-2">
+      <article class="card">
+        <div class="card-head"><h2>系统</h2><button class="btn" id="inv-refresh">重新采集</button></div>
+        <dl class="stats stats-wide" id="inv-system"></dl>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>电池</h2></div>
+        <dl class="stats stats-wide" id="inv-battery"></dl>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>处理器</h2></div>
+        <dl class="stats stats-wide" id="inv-cpu"></dl>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>内存</h2></div>
+        <dl class="stats stats-wide" id="inv-memory"></dl>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>物理磁盘</h2></div>
+      <div class="table-scroll">
+        <table class="table" id="inv-disks">
+          <thead><tr><th>型号</th><th>类型</th><th>总线</th><th class="num">容量</th><th>健康</th><th>序列号</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>显卡</h2></div>
+      <div class="table-scroll">
+        <table class="table" id="inv-gpus">
+          <thead><tr><th>型号</th><th>驱动</th><th>分辨率</th><th class="num">显存(报告值)</th><th>状态</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="note">显存为 WMI 32 位字段，超过 4GB 的显卡会显示为封顶值，仅供参考。</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>网络适配器</h2></div>
+      <div class="table-scroll">
+        <table class="table" id="inv-net">
+          <thead><tr><th>名称</th><th>描述</th><th>状态</th><th>速率</th><th>MAC</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================== SETTINGS VIEW =========================== -->
+  <main class="view hidden" id="view-settings">
+    <section class="grid-2">
+      <article class="card">
+        <div class="card-head"><h2>采样与访问</h2></div>
+        <form id="settings-form" class="form">
+          <label>
+            <span>采样间隔 (毫秒)</span>
+            <input type="number" name="refreshMs" min="250" max="60000" step="250">
+            <small>越小越实时，但采样开销越大。此机器建议 2000。</small>
+          </label>
+          <label>
+            <span>历史窗口 (分钟)</span>
+            <input type="number" name="historyMinutes" min="1" max="1440">
+            <small>内存中保留的曲线时长，不写入磁盘。</small>
+          </label>
+          <label>
+            <span>访问口令</span>
+            <input type="text" name="password" placeholder="留空则不需要口令">
+            <small>设置后局域网访问需要登录。留空即关闭口令。</small>
+          </label>
+          <fieldset>
+            <legend>告警阈值</legend>
+            <label><span>电量低告警 (%)</span><input type="number" name="batteryLowPct" min="1" max="99"></label>
+            <label><span>磁盘剩余告警 (%)</span><input type="number" name="diskLowFreePct" min="1" max="99"></label>
+            <label><span>CPU 高告警 (%)</span><input type="number" name="cpuHighPct" min="1" max="100"></label>
+            <label><span>内存高告警 (%)</span><input type="number" name="memoryHighPct" min="1" max="100"></label>
+          </fieldset>
+          <button type="submit" class="btn primary">保存</button>
+          <span class="form-status" id="settings-status"></span>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="card-head"><h2>模型单价</h2></div>
+        <p class="note">
+          单位为「每百万 token」的价格。默认全部为 0，因此费用显示为 0 并标注「未定价」——
+          这里不会替你猜测官方价格。填入真实单价后费用立即生效。
+        </p>
+        <form id="pricing-form" class="form">
+          <label>
+            <span>货币</span>
+            <input type="text" name="currency" placeholder="CNY">
+          </label>
+          <div id="pricing-rows"></div>
+          <fieldset>
+            <legend>默认单价（未列出的模型）</legend>
+            <label><span>输入</span><input type="number" name="def-input" min="0" step="0.0001"></label>
+            <label><span>输出</span><input type="number" name="def-output" min="0" step="0.0001"></label>
+            <label><span>缓存读取</span><input type="number" name="def-cacheRead" min="0" step="0.0001"></label>
+          </fieldset>
+          <button type="submit" class="btn primary">保存单价</button>
+          <span class="form-status" id="pricing-status"></span>
+        </form>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>关于</h2></div>
+      <div class="about">
+        <p>
+          HwMonitor 是一个零依赖的本地硬件监控网页服务器：硬件数据来自 Windows 性能计数器与 WMI，
+          DSH 使用数据来自只读解析 <code>~/.dsh/sessions</code> 下的会话日志。
+        </p>
+        <p class="muted" id="about-dsh-root"></p>
+        <p class="muted" id="about-caps"></p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="/labels.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
